@@ -48,3 +48,10 @@ def test_illumination_band_independent_and_net_by_band():
     assert 0.80 < dc.illumination_efficiency(2.0, 0.40) < 0.84
     # Surface error makes the same dish less efficient at 24 GHz than at 10 GHz.
     assert dc.net_efficiency(0.6, 24.048, 0.5) < dc.net_efficiency(0.6, 10.368, 0.5)
+
+
+def test_blockage_smaller_at_24ghz():
+    d = 0.75
+    b10 = dc.blockage_efficiency(3 * dc.wavelength_m(10.368), d)
+    b24 = dc.blockage_efficiency(3 * dc.wavelength_m(24.048), d)
+    assert 0.95 < b10 < b24 < 1.0

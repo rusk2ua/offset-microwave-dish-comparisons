@@ -126,8 +126,8 @@ def chart_illum_vs_fd():
                 markersize=8, markeredgecolor=SURFACE, markeredgewidth=2)
     env = [dc.best_feed_n(fd)[1] * 100 for fd in FD]
     ax.plot(FD, env, color=INK2, linewidth=1.2, linestyle=(0, (4, 3)), label="Best cos^n feed at each f/D")
-    style(ax, "Illumination × spillover efficiency vs. dish f/D (same on every band)",
-          "Dish f/D (offset dish: equivalent f/D the feed sees)", "Efficiency (%)")
+    style(ax, "Prime-focus dishes: illumination × spillover vs. f/D (same on every band)",
+          "Prime-focus dish f/D", "Efficiency (%)")
     ax.set_xlim(0.30, 1.0)
     ax.set_ylim(40, 90)
     ax.legend(frameon=False, loc="lower right", labelcolor=INK, fontsize=9)
@@ -137,22 +137,60 @@ def chart_illum_vs_fd():
 
 
 def chart_net_eff_by_band():
+    eps = np.linspace(0, 1.2, 121)
+    illum = dc.best_feed_n(0.40)[1]
     fig, ax = plt.subplots(figsize=(9, 5.2), facecolor=SURFACE)
-    best = np.array([dc.best_feed_n(fd)[1] for fd in FD])
-    ax.plot(FD, best * 100, color=INK2, linewidth=1.2, linestyle=(0, (4, 3)), label="Ideal surface (any band)")
+    ax.axhline(illum * 100, color=INK2, linewidth=1.2, linestyle=(0, (4, 3)))
+    ax.text(0.01, illum * 100 + 1.2, f"Perfect surface: {illum:.1%} (any band)", color=INK2, fontsize=9)
     for f, color in ((10.368, BLUE), (24.048, ORANGE)):
-        for rms, ls in ((0.5, "-"), (1.0, (0, (1.5, 1.5)))):
-            factor = 10 ** (-dc.ruze_loss_db(rms, f) / 10)
-            ax.plot(FD, best * factor * 100, color=color, linewidth=2, linestyle=ls,
-                    label=f"{f} GHz, {rms} mm RMS")
-    style(ax, "Illumination efficiency by band, including surface error",
-          "Dish f/D (best-matched feed)", "Illumination × spillover × surface (%)")
-    ax.set_xlim(0.30, 1.0)
+        y = [illum * 10 ** (-dc.ruze_loss_db(e, f) / 10) * 100 for e in eps]
+        ax.plot(eps, y, color=color, linewidth=2, label=f"{f} GHz")
+        ax.annotate(f"{f} GHz", (eps[-1], y[-1]), xytext=(6, 0), textcoords="offset points",
+                    va="center", color=INK, fontsize=10)
+    style(ax, "Illumination efficiency by band as the surface degrades",
+          "RMS surface error (mm)", "Illumination × spillover × surface (%)")
+    ax.set_xlim(0, 1.2)
     ax.set_ylim(0, 100)
-    ax.legend(frameon=False, loc="lower left", labelcolor=INK, fontsize=9, ncol=2)
+    ax.legend(frameon=False, loc="lower left", labelcolor=INK)
     fig.tight_layout()
+    fig.subplots_adjust(right=0.86)
     fig.savefig(ROOT / "images" / "efficiency_by_band.png", dpi=150)
     plt.close(fig)
+
+
+# Offset vs prime-focus planning scenarios. Surface RMS values and OTHER_LOSS_DB are
+# ASSUMPTIONS for illustration -- edit them to match dishes you have measured.
+SCEN_D = 0.75            # dish diameter, m
+FEED_BLOCK_WL = 3.0      # prime-focus feed shadow diameter, in wavelengths
+OTHER_LOSS_DB = 0.7      # phase error, cross-pol, feed loss, struts (lumped)
+SCENARIOS = [
+    # name, geometry, dish f/D, feed designed for f/D, RMS mm
+    ("Offset TV dish, pressed steel, stock-style feed", "offset", 0.70, 0.70, 0.60),
+    ("Prime focus, spun aluminum, f/D 0.40, matched feed", "prime", 0.40, 0.40, 0.25),
+    ("Prime focus, spun aluminum, f/D 0.31, feed for 0.40", "prime", 0.31, 0.40, 0.25),
+    ("Prime focus, spun aluminum, f/D 0.31, deep-dish feed", "prime", 0.31, 0.31, 0.25),
+    ("Prime focus, mesh/homebrew, f/D 0.45, matched feed", "prime", 0.45, 0.45, 1.00),
+]
+
+
+def scenario_table() -> str:
+    other = 10 ** (-OTHER_LOSS_DB / 10)
+    t = ("| Dish | RMS (assumed) | Illum. × spill | Blockage 10 / 24 | Net eff. 10 GHz | Net eff. 24 GHz "
+         "| Gain 10.368 | Gain 24.048 |\n|---|---|---|---|---|---|---|---|\n")
+    for name, geom, fd, feed_fd, rms in SCENARIOS:
+        n, _ = dc.best_feed_n(feed_fd)
+        illum = dc.illumination_efficiency(n, fd)
+        cells, blocks = [], []
+        for f in BANDS:
+            blk = 1.0 if geom == "offset" else dc.blockage_efficiency(FEED_BLOCK_WL * dc.wavelength_m(f), SCEN_D)
+            blocks.append(blk)
+            eff = illum * blk * other * 10 ** (-dc.ruze_loss_db(rms, f) / 10)
+            cells.append((eff, dc.gain_dbi(SCEN_D, f, eff)))
+        t += (f"| {name} | {rms:.2f} mm | {illum:.1%} | {blocks[0]:.1%} / {blocks[1]:.1%} | "
+              f"{cells[0][0]:.1%} | {cells[1][0]:.1%} | {cells[0][1]:.2f} | {cells[1][1]:.2f} |\n")
+    t += (f"\nAll rows: {SCEN_D} m aperture, {OTHER_LOSS_DB} dB lumped for phase error, cross-pol, feed loss "
+          f"and struts, feed shadow {FEED_BLOCK_WL:.0f}λ across. Gains in dBi.")
+    return t
 
 
 def efficiency_band_table() -> str:
@@ -176,11 +214,12 @@ def main():
         "### 24 GHz (24.048 GHz, λ = {:.2f} mm) — gain in dBi\n\n{}\n\n"
         "### Surface-error (Ruze) loss\n\n{}\n\n"
         "### Surface tolerance for a given loss budget\n\n{}\n\n"
-        "### Illumination efficiency by band (best-matched feed)\n\n{}\n\n"
-        "### Feed f/D mismatch example (feed for f/D 0.40 on an f/D 0.31 dish)\n\n{}"
+        "### Illumination efficiency by band (prime focus, best-matched feed)\n\n{}\n\n"
+        "### Feed f/D mismatch example (prime focus: feed for f/D 0.40 on an f/D 0.31 dish)\n\n{}\n\n"
+        "### Offset vs. prime focus: planning comparison\n\n{}"
     ).format(dc.wavelength_m(10.368) * 1000, gain_table(10.368),
              dc.wavelength_m(24.048) * 1000, gain_table(24.048),
-             ruze_table(), tolerance_table(), efficiency_band_table(), feed_table())
+             ruze_table(), tolerance_table(), efficiency_band_table(), feed_table(), scenario_table())
     readme = ROOT / "README.md"
     text = readme.read_text()
     text = re.sub(r"(<!-- TABLES:START -->\n).*?(<!-- TABLES:END -->)",

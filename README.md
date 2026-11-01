@@ -1,6 +1,6 @@
 # Offset Microwave Dish Comparisons
 
-How much gain do common amateur microwave dishes (about 0.6–0.9 m) give on **10 GHz** and **24 GHz**? This repo answers that and shows what eats into it: aperture efficiency, feed illumination, and reflector surface accuracy.
+How much gain do common amateur microwave dishes (about 0.6–0.9 m) give on **10 GHz** and **24 GHz**? This repo answers that for surplus **offset** satellite-TV dishes and compares them with **prime-focus** dishes. It also shows what eats into the gain: aperture efficiency, feed illumination and blockage, and reflector surface accuracy.
 
 It includes a small Python calculator (`dishcalc.py`), a script that regenerates every table and chart in this README (`make_report.py`), and tests that pin the results to known values.
 
@@ -11,8 +11,10 @@ It includes a small Python calculator (`dishcalc.py`), a script that regenerates
 - **The same dish gains 7.31 dB going from 10.368 to 24.048 GHz**, as long as its efficiency holds up.
 - **Efficiency usually doesn't hold up at 24 GHz.** Surface-error loss grows with frequency squared, so a given surface costs about **5.4×** as many dB at 24 GHz as at 10 GHz. A pressed-steel dish with 0.5–0.8 mm RMS error barely notices it on 10 GHz (0.2–0.5 dB) but loses 1.1–2.8 dB on 24 GHz.
 - **Illumination efficiency is pure geometry.** A feed scaled to each band gives the same illumination efficiency on 10 and 24 GHz. The difference between bands comes from the surface, not the feed.
+- **Offset dishes are all alike in the ways that matter here.** They're built for satellite TV and use much the same feed geometry, so f/D isn't a useful way to compare them. What separates one from another is mainly size and surface accuracy.
+- **Prime-focus dishes vary much more.** f/D, how well the feed matches it, and surface quality (spun aluminum vs. mesh or homebrew) all swing widely. That's where the f/D and feed analysis below matters.
 - **Plan on 50–65% total aperture efficiency** for a real amateur dish. Figures of 70–75% describe illumination alone, before spillover, blockage, surface error and feed loss.
-- **A mismatched feed costs a few tenths of a dB.** A feed designed for f/D 0.40 on an f/D 0.31 dish loses about 0.4–0.6 dB. Moving the feed doesn't fix it; a feed with a wider beam does.
+- **On a prime-focus dish, a mismatched feed costs a few tenths of a dB.** A feed designed for f/D 0.40 on an f/D 0.31 dish loses about 0.4–0.6 dB. Moving the feed doesn't fix it; a feed with a wider beam does.
 
 ## Quick start
 
@@ -56,7 +58,15 @@ where ε is the RMS surface error. The loss scales with ε² and f². The formul
 
 ![Surface-error loss vs frequency](images/ruze_loss_vs_freq.png)
 
-### Feed illumination
+### Feed blockage (prime focus)
+
+A prime-focus feed sits in front of the aperture and casts a shadow. For a feed shadow of diameter D_b, the blockage efficiency is approximately
+
+$$\eta_{blk} = \left(1 - \frac{D_b^2}{D^2}\right)^2$$
+
+This counts the feed only, not the struts. A feed scaled to the band shrinks with wavelength, so on a 0.75 m dish a 3λ feed costs about 0.12 dB at 10 GHz but only about 0.02 dB at 24 GHz. Offset dishes have essentially no blockage.
+
+### Feed illumination (prime focus)
 
 The feed is modeled as an ideal **cosⁿ** pattern at the focus of a prime-focus paraboloid. The illumination (taper) × spillover efficiency is the classic Silver/Kraus integral:
 
@@ -65,19 +75,33 @@ $$\eta_{ill} = \cot^2\frac{\psi_0}{2}\left|\int_0^{\psi_0}\sqrt{2(n+1)\cos^n\psi
 - **It doesn't depend on frequency.** The result is geometry only, so a feed scaled to each band gives the same curve on 10 and 24 GHz.
 - **Mismatched feeds:** a feed built for a shallower dish (higher f/D) has too narrow a beam for a deeper one. It under-illuminates the rim, which raises edge taper and lowers spillover, and efficiency falls.
 
-![Illumination efficiency vs f/D](images/illumination_vs_fd.png)
+![Prime-focus illumination efficiency vs f/D](images/illumination_vs_fd.png)
 
-The net efficiency by band multiplies the best-matched illumination efficiency by the Ruze surface factor. That's where 10 and 24 GHz separate:
+Multiplying the illumination efficiency by the Ruze surface factor shows where 10 and 24 GHz separate. This holds for either dish type:
 
 ![Illumination efficiency by band](images/efficiency_by_band.png)
 
-## Offset dishes
+## Offset vs. prime-focus dishes
 
-The repo name says *offset* because most dishes in this size range are surplus satellite-TV offset reflectors.
+### Offset (satellite-TV) dishes
+
+Most dishes in this size range are surplus offset reflectors built for satellite TV.
 
 - **Diameter:** use the **projected aperture**, which for a typical offset dish is close to circular with a diameter about equal to the reflector's **width** (minor axis). Don't use the longer vertical dimension, and don't average the two axes; both overstate the gain.
-- **f/D:** the illumination curves use the **equivalent f/D the feed sees**, meaning the angle the offset section subtends from the focus. That is not the parent paraboloid's f/D. Offset TV dishes usually look like f/D ≈ 0.6–0.9 to the feed.
-- **Blockage:** an offset geometry has little or none, which the model already ignores.
+- **f/D doesn't help compare them.** Every offset TV dish is designed around much the same feed geometry, so the f/D curves below aren't useful for choosing between offset dishes. In the comparison table, the offset row just assumes a feed matched to the dish.
+- **No blockage:** the feed sits outside the aperture.
+- **What differs between them:** mostly size and the accuracy of the pressed-steel or SMC surface, which matters far more on 24 GHz than on 10 GHz.
+
+### Prime-focus dishes
+
+Prime-focus dishes are where f/D and feed choice matter.
+
+- **f/D varies widely**, from deep dishes around 0.25–0.35 to shallow ones around 0.5–0.6.
+- **Feeds have to be matched to f/D.** A feed that suits one dish can under- or over-illuminate another. The W1GHZ antenna book has measured efficiency for the common amateur feed designs.
+- **Surface quality ranges widely,** from precision spun aluminum to mesh and homebrew reflectors.
+- **The feed blocks part of the aperture,** which costs a little gain, less on 24 GHz than on 10 GHz.
+
+The *Offset vs. prime focus* table under Results puts example dishes of both kinds side by side. Its surface-error and lumped-loss values are **assumptions for illustration**. Edit `SCENARIOS`, `OTHER_LOSS_DB` and `FEED_BLOCK_WL` in `make_report.py` to match dishes you've measured.
 
 ## Results
 
@@ -124,7 +148,7 @@ At 10.4 GHz add about 0.03 dB.
 | 1 dB | 1.10 mm | 0.48 mm |
 | 3 dB | 1.91 mm | 0.82 mm |
 
-### Illumination efficiency by band (best-matched feed)
+### Illumination efficiency by band (prime focus, best-matched feed)
 
 | Dish f/D | Ideal (any band) | 10.368 GHz @ 0.5 mm | 10.368 GHz @ 1.0 mm | 24.048 GHz @ 0.5 mm | 24.048 GHz @ 1.0 mm |
 |---|---|---|---|---|---|
@@ -134,7 +158,7 @@ At 10.4 GHz add about 0.03 dB.
 | 0.60 | 81.7% | 77.9% | 67.6% | 63.4% | 29.6% |
 | 0.80 | 81.5% | 77.8% | 67.5% | 63.2% | 29.5% |
 
-### Feed f/D mismatch example (feed for f/D 0.40 on an f/D 0.31 dish)
+### Feed f/D mismatch example (prime focus: feed for f/D 0.40 on an f/D 0.31 dish)
 
 | Case | Illumination × spillover efficiency |
 |---|---|
@@ -143,12 +167,24 @@ At 10.4 GHz add about 0.03 dB.
 | Feed optimized for f/D 0.31 (cos^0.75) | 85.5% |
 
 The 0.40 feed loses **0.43 dB** on the 0.31 dish compared with its own 0.40 dish, and **0.57 dB** compared with the best feed for f/D 0.31. Rim half-angle is 77.8° at f/D 0.31 vs 64.0° at f/D 0.40.
+
+### Offset vs. prime focus: planning comparison
+
+| Dish | RMS (assumed) | Illum. × spill | Blockage 10 / 24 | Net eff. 10 GHz | Net eff. 24 GHz | Gain 10.368 | Gain 24.048 |
+|---|---|---|---|---|---|---|---|
+| Offset TV dish, pressed steel, stock-style feed | 0.60 mm | 81.6% | 100.0% / 100.0% | 64.9% | 48.2% | 36.34 | 42.36 |
+| Prime focus, spun aluminum, f/D 0.40, matched feed | 0.25 mm | 82.7% | 97.3% / 99.5% | 67.7% | 65.8% | 36.53 | 43.71 |
+| Prime focus, spun aluminum, f/D 0.31, feed for 0.40 | 0.25 mm | 75.0% | 97.3% / 99.5% | 61.4% | 59.6% | 36.10 | 43.28 |
+| Prime focus, spun aluminum, f/D 0.31, deep-dish feed | 0.25 mm | 85.5% | 97.3% / 99.5% | 70.0% | 68.0% | 36.67 | 43.85 |
+| Prime focus, mesh/homebrew, f/D 0.45, matched feed | 1.00 mm | 82.2% | 97.3% / 99.5% | 56.4% | 25.2% | 35.74 | 39.55 |
+
+All rows: 0.75 m aperture, 0.7 dB lumped for phase error, cross-pol, feed loss and struts, feed shadow 3λ across. Gains in dBi.
 <!-- TABLES:END -->
 
 ## Assumptions and limits
 
 - **Gain tables:** the efficiency you choose is the *total* aperture efficiency. Surface loss is shown separately, so subtract it if your η doesn't already include it.
-- **Illumination model:** an ideal cosⁿ feed with no phase-center error, cross-polarization, feed loss, back radiation or blockage. Real feeds land somewhat below these curves. The model is optimistic for very deep dishes (f/D below about 0.35), so the charts start at f/D 0.30 and feed exponents are kept at n ≥ 0.5.
+- **Illumination model:** an ideal cosⁿ prime-focus feed with no phase-center error, cross-polarization, feed loss or back radiation. Blockage is modeled separately and covers the feed only. Real feeds land somewhat below these curves. The model is optimistic for very deep dishes (f/D below about 0.35), so the charts start at f/D 0.30 and feed exponents are kept at n ≥ 0.5.
 - **Ruze loss:** assumes small, random, uncorrelated surface errors.
 - **Beamwidth:** HPBW uses k = 70. Tapered illumination widens the beam slightly.
 
@@ -156,7 +192,7 @@ The 0.40 feed loses **0.43 dB** on the 0.31 dish compared with its own 0.40 dish
 
 | Path | Purpose |
 |---|---|
-| `dishcalc.py` | Library and command-line calculator: gain, HPBW, Ruze loss, surface tolerance, cosⁿ illumination, feed mismatch |
+| `dishcalc.py` | Library and command-line calculator: gain, HPBW, Ruze loss, surface tolerance, cosⁿ illumination, feed blockage, feed mismatch |
 | `make_report.py` | Regenerates the README tables and the PNGs in `images/` |
 | `tests/test_dishcalc.py` | pytest checks against known values |
 | `images/` | Generated charts |

@@ -92,6 +92,15 @@ def net_efficiency(f_over_d: float, freq_ghz: float, rms_mm: float, n: float | N
     return eff * 10 ** (-ruze_loss_db(rms_mm, freq_ghz) / 10)
 
 
+def blockage_efficiency(block_diameter_m: float, diameter_m: float) -> float:
+    """Central-blockage efficiency for a prime-focus dish: (1 - (Db/D)^2)^2.
+
+    Counts the feed/horn shadow only (no struts). Offset dishes have ~no blockage: use 1.0.
+    A feed scaled to the band is smaller at higher frequency, so blockage costs less there.
+    """
+    return (1 - (block_diameter_m / diameter_m) ** 2) ** 2
+
+
 def feed_mismatch_loss_db(dish_fd: float, feed_designed_fd: float) -> float:
     """Loss (dB) of a feed optimized for feed_designed_fd, used on a dish_fd dish,
     compared with the best cos^n feed for that dish."""
