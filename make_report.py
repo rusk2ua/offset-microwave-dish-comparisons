@@ -113,6 +113,38 @@ def chart_loss_vs_freq():
     plt.close(fig)
 
 
+EFF_RAMP = ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#0d366b"]  # ordinal blue, 55 -> 75 %
+
+
+def chart_gain_vs_diameter(f: float, fname: str, ylim: tuple[float, float]):
+    d = np.linspace(0.5, 1.0, 201)
+    fig, ax = plt.subplots(figsize=(9, 5.2), facecolor=SURFACE)
+    for eff, color in zip(EFFS, EFF_RAMP):
+        y = [dc.gain_dbi(x, f, eff) for x in d]
+        ax.plot(d, y, color=color, linewidth=2, label=f"{eff:.0%}")
+        ax.annotate(f"{eff:.0%}", (d[-1], y[-1]), xytext=(6, 0), textcoords="offset points",
+                    va="center", color=INK, fontsize=9)
+    for name, dia in DISHES:
+        ax.axvline(dia, color=GRID, linewidth=1, zorder=0)
+        g = [dc.gain_dbi(dia, f, e) for e in EFFS]
+        ax.plot([dia] * len(EFFS), g, "o", color=INK2, markersize=4, zorder=3)
+    labels = {"23.6 in": (0.588, "left"), "24 in": (0.621, "right"), "0.75 m": (0.75, "center"),
+              "0.80 m": (0.80, "center"), "0.88 m": (0.88, "center")}
+    for name, dia in DISHES:
+        x, ha = labels[name]
+        ax.text(x, ylim[0] + 0.25, name, color=INK2, fontsize=8.5,
+                ha={"left": "right", "right": "left", "center": "center"}[ha])
+    style(ax, f"Dish gain vs. diameter at {f} GHz", "Aperture diameter (m)", "Gain (dBi)")
+    ax.set_xlim(0.5, 1.0)
+    ax.set_ylim(*ylim)
+    ax.legend(title="Aperture efficiency", frameon=False, loc="upper left", labelcolor=INK,
+              fontsize=9, title_fontsize=9)
+    fig.tight_layout()
+    fig.subplots_adjust(right=0.9)
+    fig.savefig(ROOT / "images" / fname, dpi=150)
+    plt.close(fig)
+
+
 FD = np.round(np.arange(0.30, 1.001, 0.01), 3)
 
 
@@ -207,11 +239,15 @@ def main():
     chart_loss_vs_rms()
     chart_loss_vs_freq()
     chart_illum_vs_fd()
+    chart_gain_vs_diameter(10.368, "gain_vs_diameter_10ghz.png", (31.5, 40.0))
+    chart_gain_vs_diameter(24.192, "gain_vs_diameter_24ghz.png", (39.0, 47.5))
     chart_net_eff_by_band()
     tables = (
         "### 10 GHz (10.368 GHz, λ = {:.2f} mm) — gain in dBi\n\n{}\n\n"
         "At 10.4 GHz add about 0.03 dB.\n\n"
+        "![Gain vs diameter at 10.368 GHz](images/gain_vs_diameter_10ghz.png)\n\n"
         "### 24 GHz (24.192 GHz, λ = {:.2f} mm) — gain in dBi\n\n{}\n\n"
+        "![Gain vs diameter at 24.192 GHz](images/gain_vs_diameter_24ghz.png)\n\n"
         "### Surface-error (Ruze) loss\n\n{}\n\n"
         "### Surface tolerance for a given loss budget\n\n{}\n\n"
         "### Illumination efficiency by band (prime focus, best-matched feed)\n\n{}\n\n"
