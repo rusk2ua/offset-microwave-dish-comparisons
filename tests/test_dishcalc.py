@@ -21,14 +21,14 @@ def test_efficiency_not_squared():
 
 
 def test_band_scaling():
-    diff = dc.gain_dbi(0.75, 24.048, 0.6) - dc.gain_dbi(0.75, 10.368, 0.6)
-    assert math.isclose(diff, 20 * math.log10(24.048 / 10.368), abs_tol=1e-9)
+    diff = dc.gain_dbi(0.75, 24.192, 0.6) - dc.gain_dbi(0.75, 10.368, 0.6)
+    assert math.isclose(diff, 20 * math.log10(24.192 / 10.368), abs_tol=1e-9)
 
 
 def test_ruze():
-    assert math.isclose(dc.ruze_loss_db(0.5, 24.048), 1.10, abs_tol=0.01)
+    assert math.isclose(dc.ruze_loss_db(0.5, 24.192), 1.12, abs_tol=0.01)
     assert math.isclose(dc.ruze_loss_db(0.5, 10.368), 0.21, abs_tol=0.01)
-    assert math.isclose(dc.ruze_loss_db(dc.rms_for_loss_mm(1.0, 24.048), 24.048), 1.0, abs_tol=1e-9)
+    assert math.isclose(dc.ruze_loss_db(dc.rms_for_loss_mm(1.0, 24.192), 24.192), 1.0, abs_tol=1e-9)
 
 
 def test_feed_mismatch():
@@ -47,11 +47,11 @@ def test_illumination_band_independent_and_net_by_band():
     # Ideal illumination efficiency is pure geometry: textbook ~82-83 % for cos^2 at f/D 0.4.
     assert 0.80 < dc.illumination_efficiency(2.0, 0.40) < 0.84
     # Surface error makes the same dish less efficient at 24 GHz than at 10 GHz.
-    assert dc.net_efficiency(0.6, 24.048, 0.5) < dc.net_efficiency(0.6, 10.368, 0.5)
+    assert dc.net_efficiency(0.6, 24.192, 0.5) < dc.net_efficiency(0.6, 10.368, 0.5)
 
 
 def test_blockage_smaller_at_24ghz():
     d = 0.75
     b10 = dc.blockage_efficiency(3 * dc.wavelength_m(10.368), d)
-    b24 = dc.blockage_efficiency(3 * dc.wavelength_m(24.048), d)
+    b24 = dc.blockage_efficiency(3 * dc.wavelength_m(24.192), d)
     assert 0.95 < b10 < b24 < 1.0

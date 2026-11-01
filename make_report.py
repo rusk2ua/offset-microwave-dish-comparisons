@@ -16,7 +16,7 @@ import dishcalc as dc
 ROOT = pathlib.Path(__file__).parent
 DISHES = [("23.6 in", 23.6 * dc.INCH), ("24 in", 24 * dc.INCH), ("0.75 m", 0.75),
           ("0.80 m", 0.80), ("0.88 m", 0.88)]
-BANDS = [10.368, 24.048]
+BANDS = [10.368, 24.192]
 EFFS = [0.55, 0.60, 0.65, 0.70, 0.75]
 RMS = [0.25, 0.5, 0.75, 1.0]
 
@@ -79,7 +79,7 @@ def style(ax, title, xlabel, ylabel):
 def chart_loss_vs_rms():
     eps = np.linspace(0, 1.5, 151)
     fig, ax = plt.subplots(figsize=(9, 5.2), facecolor=SURFACE)
-    for f, color, label in ((10.368, BLUE, "10.368 GHz"), (24.048, ORANGE, "24.048 GHz")):
+    for f, color, label in ((10.368, BLUE, "10.368 GHz"), (24.192, ORANGE, "24.192 GHz")):
         y = [dc.ruze_loss_db(e, f) for e in eps]
         ax.plot(eps, y, color=color, linewidth=2, label=label)
         ax.annotate(label, (eps[-1], y[-1]), xytext=(6, 0), textcoords="offset points",
@@ -142,7 +142,7 @@ def chart_net_eff_by_band():
     fig, ax = plt.subplots(figsize=(9, 5.2), facecolor=SURFACE)
     ax.axhline(illum * 100, color=INK2, linewidth=1.2, linestyle=(0, (4, 3)))
     ax.text(0.01, illum * 100 + 1.2, f"Perfect surface: {illum:.1%} (any band)", color=INK2, fontsize=9)
-    for f, color in ((10.368, BLUE), (24.048, ORANGE)):
+    for f, color in ((10.368, BLUE), (24.192, ORANGE)):
         y = [illum * 10 ** (-dc.ruze_loss_db(e, f) / 10) * 100 for e in eps]
         ax.plot(eps, y, color=color, linewidth=2, label=f"{f} GHz")
         ax.annotate(f"{f} GHz", (eps[-1], y[-1]), xytext=(6, 0), textcoords="offset points",
@@ -176,7 +176,7 @@ SCENARIOS = [
 def scenario_table() -> str:
     other = 10 ** (-OTHER_LOSS_DB / 10)
     t = ("| Dish | RMS (assumed) | Illum. × spill | Blockage 10 / 24 | Net eff. 10 GHz | Net eff. 24 GHz "
-         "| Gain 10.368 | Gain 24.048 |\n|---|---|---|---|---|---|---|---|\n")
+         "| Gain 10.368 | Gain 24.192 |\n|---|---|---|---|---|---|---|---|\n")
     for name, geom, fd, feed_fd, rms in SCENARIOS:
         n, _ = dc.best_feed_n(feed_fd)
         illum = dc.illumination_efficiency(n, fd)
@@ -211,14 +211,14 @@ def main():
     tables = (
         "### 10 GHz (10.368 GHz, λ = {:.2f} mm) — gain in dBi\n\n{}\n\n"
         "At 10.4 GHz add about 0.03 dB.\n\n"
-        "### 24 GHz (24.048 GHz, λ = {:.2f} mm) — gain in dBi\n\n{}\n\n"
+        "### 24 GHz (24.192 GHz, λ = {:.2f} mm) — gain in dBi\n\n{}\n\n"
         "### Surface-error (Ruze) loss\n\n{}\n\n"
         "### Surface tolerance for a given loss budget\n\n{}\n\n"
         "### Illumination efficiency by band (prime focus, best-matched feed)\n\n{}\n\n"
         "### Feed f/D mismatch example (prime focus: feed for f/D 0.40 on an f/D 0.31 dish)\n\n{}\n\n"
         "### Offset vs. prime focus: planning comparison\n\n{}"
     ).format(dc.wavelength_m(10.368) * 1000, gain_table(10.368),
-             dc.wavelength_m(24.048) * 1000, gain_table(24.048),
+             dc.wavelength_m(24.192) * 1000, gain_table(24.192),
              ruze_table(), tolerance_table(), efficiency_band_table(), feed_table(), scenario_table())
     readme = ROOT / "README.md"
     text = readme.read_text()
