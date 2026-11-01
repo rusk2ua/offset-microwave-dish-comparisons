@@ -1,5 +1,7 @@
 # Offset Microwave Dish Comparisons
 
+[![Tests and README check](https://github.com/rusk2ua/offset-microwave-dish-comparisons/actions/workflows/check.yml/badge.svg)](https://github.com/rusk2ua/offset-microwave-dish-comparisons/actions/workflows/check.yml)
+
 How much gain do common amateur microwave dishes (about 0.6–0.9 m) give on **10 GHz** and **24 GHz**? This repo answers that for surplus **offset** satellite-TV dishes and compares them with **prime-focus** dishes. It also shows what eats into the gain: aperture efficiency, feed illumination and blockage, and reflector surface accuracy.
 
 It includes a small Python calculator (`dishcalc.py`), a script that regenerates every table and chart in this README (`make_report.py`), and tests that pin the results to known values.
@@ -196,6 +198,7 @@ All rows: 0.75 m aperture, 0.7 dB lumped for phase error, cross-pol, feed loss a
 | `make_report.py` | Regenerates the README tables and the PNGs in `images/` |
 | `tests/test_dishcalc.py` | pytest checks against known values |
 | `images/` | Generated charts |
+| `.github/workflows/check.yml` | CI: runs the tests and fails if the README tables don't match the code |
 
 ## References
 

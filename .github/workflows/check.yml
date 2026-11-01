@@ -1,0 +1,35 @@
+name: Tests and README check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install requirements
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Check README tables are up to date
+        run: |
+          python make_report.py
+          if ! git diff --exit-code -- README.md; then
+            echo "::error file=README.md::README tables are out of date. Run 'python make_report.py' and commit the result."
+            exit 1
+          fi
