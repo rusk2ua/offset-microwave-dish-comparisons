@@ -55,3 +55,14 @@ def test_blockage_smaller_at_24ghz():
     b10 = dc.blockage_efficiency(3 * dc.wavelength_m(10.368), d)
     b24 = dc.blockage_efficiency(3 * dc.wavelength_m(24.192), d)
     assert 0.95 < b10 < b24 < 1.0
+
+
+def test_w1ghz_dualband_data():
+    import csv
+    path = pathlib.Path(__file__).resolve().parents[1] / "data" / "w1ghz_dualband_2004.csv"
+    with open(path) as fh:
+        rows = {r["horn"]: r for r in csv.DictReader(line for line in fh if not line.startswith("#"))}
+    ch = rows["Chaparral"]
+    assert float(ch["offset07_eff24"]) == 0.76 and float(ch["offset07_eff10"]) == 0.74
+    assert math.isclose(abs(float(ch["pc24_mm"]) - float(ch["pc10_mm"])), 1.3, abs_tol=1e-9)
+    assert len(rows) == 6

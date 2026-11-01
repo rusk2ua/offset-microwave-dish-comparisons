@@ -16,6 +16,7 @@ It includes a small Python calculator (`dishcalc.py`), a script that regenerates
 - **Offset dishes are all alike in the ways that matter here.** They're built for satellite TV and use much the same feed geometry, so f/D isn't a useful way to compare them. What separates one from another is mainly size and surface accuracy.
 - **Prime-focus dishes vary much more.** f/D, how well the feed matches it, and surface quality (spun aluminum vs. mesh or homebrew) all swing widely. That's where the f/D and feed analysis below matters.
 - **Plan on 50–65% total aperture efficiency** for a real amateur dish. Figures of 70–75% describe illumination alone, before spillover, blockage, surface error and feed loss.
+- **A dual-band 10/24 GHz feed costs very little.** On an offset dish, the W1GHZ feed with a Chaparral horn is within about 0.1 dB of a feed optimized for each band, so the dish's 24 GHz surface accuracy matters far more than the dual-band compromise.
 - **On a prime-focus dish, a mismatched feed costs a few tenths of a dB.** A feed designed for f/D 0.40 on an f/D 0.31 dish loses about 0.4–0.6 dB. Moving the feed doesn't fix it; a feed with a wider beam does.
 
 ## Quick start
@@ -125,9 +126,66 @@ The tables and charts below support one main conclusion: **on 10 GHz, buy apertu
 - **The mechanics get about 2.3× tighter.** Beamwidth is roughly 1.0–1.5°, so mount stiffness, wind loading and pointing resolution matter more. Feed position tolerances scale with wavelength too, so peak the feed in small steps.
 - **The feed rules don't change.** Illumination efficiency depends only on geometry, so the same f/D matching guidance applies. Blockage is negligible (about 0.02 dB), so a precision prime-focus dish with a matched feed is the strongest single-band 24 GHz choice in the comparison table.
 
-### Coming next: dual-band
+## Dual-band use: the W1GHZ 10/24 GHz feed
 
-The [W1GHZ 10/24 GHz dual-band feed](https://rvhfg.org/wpr/w1ghz-dual-band-dish-feed/) is designed for **offset** dishes, and its two phase centers are close together, so peaking it on 10 GHz also puts 24 GHz in good shape. One feed then serves both bands, so the dish has to meet the 24 GHz surface requirement. A dual-band comparison will be added next.
+One feed covering both bands means you peak the dish on 10 GHz, where the beam is wider and easier to find, then switch to 24 GHz without moving anything. The [W1GHZ 10/24 GHz dual-band feed](https://rvhfg.org/wpr/w1ghz-dual-band-dish-feed/) is the design used here. It's described in Paul Wade W1GHZ's paper *Improving the Dual-band 10 & 24 GHz Feedhorn for Offset Dishes* (2004), which builds on AD6FP and AA6IW's design from Microwave Update 2001.
+
+### How the feed works
+
+- **24 GHz:** a W2IMU dual-mode horn sized for an offset dish, fed from the rear through circular waveguide and a WR-42 matching section.
+- **10 GHz:** an SMA probe in the side of the output section. The tapered section looks like a closed end at 10 GHz, so the output section acts like a simple "coffee-can" feed there.
+- **The outer horn fixes 10 GHz.** On its own, the 10 GHz section has a beam far too wide for an offset dish: only 47% efficient at f/D 0.7, versus 76% on 24 GHz. A corrugated or conical horn slipped over the output narrows the 10 GHz beam while barely affecting 24 GHz.
+- **Match (W1GHZ, measured):** VSWR about 1.25 at 10.368 GHz with no tuning, and about 1.05 at 24.192 GHz with the matching section. RVHFG reports production units typically above 30 dB return loss at 10.368 GHz and 20 dB at 24.192 GHz.
+- **Port isolation:** RVHFG reports at least 30 dB from 24 to 10 GHz. Isolation from 10 to 24 GHz is much higher, because WR-42 is beyond cutoff at 10 GHz. The production feed adds a **band-pass filter built into the pedestal of the 10 GHz SMA connector**. It doesn't affect antenna performance, but it gives about 30 dB of rejection of 24 GHz at the 10 GHz port, which keeps the 24 GHz transmitter from damaging the 10 GHz receiver. W1GHZ's 2004 paper predates the filter.
+
+### The data
+
+<!-- DUALBAND:START -->
+#### The W1GHZ feed with different horns
+
+| Horn | 24 GHz best eff. (f/D) | 10 GHz best eff. (f/D) | Eff. at f/D 0.7: 24 GHz | Eff. at f/D 0.7: 10 GHz | 10 vs 24 GHz | Phase-center gap |
+|---|---|---|---|---|---|---|
+| None (bare dual-mode) | 76% (0.72) | 71% (0.38) | 76% | 47% | -2.09 dB | 1.2 mm (0.04 λ / 0.10 λ) |
+| Conical | 76% (0.80) | 67% (0.70) | 74% | 66% | -0.50 dB | 5.2 mm (0.18 λ / 0.42 λ) |
+| RCA DSS | 75% (0.93) | 77% (0.70) | 69% | 68% | -0.06 dB | 19.0 mm (0.66 λ / 1.53 λ) |
+| **Chaparral** | 78% (0.81) | 75% (0.65) | 76% | 74% | -0.12 dB | 1.3 mm (0.04 λ / 0.10 λ) |
+| CD-80 | 77% (0.88) | 78% (0.76) | 68% | 65% | -0.20 dB | 24.2 mm (0.84 λ / 1.95 λ) |
+| Surplus corrugated | 79% (0.80) | 76% (0.70) | 77% | 70% | -0.41 dB | 15.8 mm (0.55 λ / 1.27 λ) |
+
+Calculated (HFSS) values from W1GHZ (2004); see `data/w1ghz_dualband_2004.csv`. "10 vs 24 GHz" is the 10 GHz efficiency relative to 24 GHz at offset f/D 0.7, with the feed at the 24 GHz phase center. The phase-center gap is shown in wavelengths at 10 and at 24 GHz.
+
+![Dual-band horn efficiencies](images/dualband_horns.png)
+
+#### Expected net gain on offset dishes
+
+| Dish | 10 GHz @ 0.25 mm | 10 GHz @ 0.5 mm | 10 GHz @ 0.75 mm | 24 GHz @ 0.25 mm | 24 GHz @ 0.5 mm | 24 GHz @ 0.75 mm |
+|---|---|---|---|---|---|---|
+| 18 in (0.457 m) | 31.9 | 31.7 | 31.4 | 39.1 | 38.3 | 36.9 |
+| 23.6 in (0.599 m) | 34.2 | 34.1 | 33.8 | 41.5 | 40.6 | 39.2 |
+| 24 in (0.610 m) | 34.4 | 34.2 | 33.9 | 41.6 | 40.8 | 39.4 |
+| 0.75 m (0.750 m) | 36.2 | 36.0 | 35.7 | 43.4 | 42.6 | 41.2 |
+| 0.80 m (0.800 m) | 36.7 | 36.6 | 36.3 | 44.0 | 43.1 | 41.7 |
+| 0.88 m (0.880 m) | 37.5 | 37.4 | 37.1 | 44.8 | 44.0 | 42.6 |
+
+Net gain in dBi with the Chaparral horn: W1GHZ's calculated efficiency at f/D 0.7 × 0.85 real-world factor = 62.9% at 10.368 GHz and 64.6% at 24.192 GHz, minus Ruze surface loss.
+
+![Dual-band net gain](images/dualband_gain.png)
+<!-- DUALBAND:END -->
+
+### What the numbers say
+
+- **The Chaparral horn is the best match for dual-band use.** W1GHZ calculates 76% at 24 GHz and 74% at 10 GHz at offset f/D 0.7, and its two phase centers are only 1.3 mm apart (0.04 λ at 10 GHz, 0.10 λ at 24 GHz). Peaking on one band leaves the other essentially in focus.
+- **Dual-band costs very little.** Compared with the same Chaparral-horn feed at each band's own best f/D and focus, using it at f/D 0.7 with the 24 GHz focus costs about 0.1 dB on each band (78% → 76% at 24 GHz, 75% → 74% at 10 GHz). W1GHZ calls it comparable to the best single-band feeds. The planning comparison under Results puts it 0.3–0.4 dB below an *ideal* single-band feed, which is the upper bound.
+- **Other horns trade one band for the other.** The surplus corrugated horn is slightly better at 24 GHz but 0.4 dB lower at 10 GHz, and its phase centers are 15.8 mm apart. The RCA and CD-80 horns lose 24 GHz efficiency at f/D 0.7. Never run the bare dual-mode feed without a horn: it's 2.1 dB down on 10 GHz.
+- **Calculated, not measured.** These are HFSS figures. W1GHZ notes real-world efficiency is at least 15% lower, so the gain table applies a 0.85 factor: about 63% on 10 GHz and 65% on 24 GHz before surface loss.
+
+### Choosing a dish for the dual-band feed
+
+- **Use an offset dish.** The feed is designed for offset geometry around f/D 0.7, which suits DSS-style dishes. RVHFG reports offset dishes from 12 in to 1.2 m in successful use, and says 18 in DSS dishes work well.
+- **Let 24 GHz set the surface requirement.** A dish that's fine on 10 GHz can lose several dB on 24 GHz. Aim for about 0.33 mm RMS or better (0.5 dB of surface loss) and avoid mesh. On a 0.75 m dish, going from 0.25 mm to 0.75 mm RMS costs 2.2 dB on 24 GHz and only 0.4 dB on 10 GHz.
+- **Then go as big as the surface allows.** Once the surface is good, size pays on both bands. A good 0.75 m dish gives about 36 dBi on 10 GHz and 43 dBi on 24 GHz; an 18 in DSS dish gives about 32 and 39 dBi.
+- **Expect a narrow beam on 24 GHz.** It's 2.3× narrower than on 10 GHz (about 1.0–1.5° in this size range), so peak on 10 GHz, switch, and touch up the 24 GHz peak if needed. W1GHZ and RVHFG both advise moving the feed in small steps when focusing.
+- **Practical details:** keep the 24 GHz waveguide and 10 GHz coax runs short, and weatherproof the open horn (RVHFG suggests a yogurt-container lid sealed in place).
 
 ## Results
 
@@ -217,8 +275,9 @@ The dot marks the f/D 0.40 feed on the f/D 0.31 dish from the table.
 | Prime focus, spun aluminum, f/D 0.31, feed for 0.40 | 0.25 mm | 75.0% | 97.3% / 99.5% | 61.4% | 59.6% | 36.10 | 43.33 |
 | Prime focus, spun aluminum, f/D 0.31, deep-dish feed | 0.25 mm | 85.5% | 97.3% / 99.5% | 70.0% | 67.9% | 36.67 | 43.90 |
 | Prime focus, mesh/homebrew, f/D 0.45, matched feed | 1.00 mm | 82.2% | 97.3% / 99.5% | 56.4% | 24.9% | 35.74 | 39.54 |
+| Offset TV dish, pressed steel, W1GHZ dual-band feed (Chaparral horn) | 0.60 mm | 74% / 76%* | 100.0% / 100.0% | 58.8% | 44.7% | 35.92 | 42.08 |
 
-All rows: 0.75 m aperture, 0.7 dB lumped for phase error, cross-pol, feed loss and struts, feed shadow 3λ across. Gains in dBi.
+All rows: 0.75 m aperture, 0.7 dB lumped for phase error, cross-pol, feed loss and struts, feed shadow 3λ across. Gains in dBi. \* W1GHZ's calculated 10 / 24 GHz efficiency at f/D 0.7 (includes phase error), used instead of the cos^n model.
 
 ![Offset vs prime focus net efficiency](images/offset_vs_prime_focus.png)
 <!-- TABLES:END -->
@@ -236,6 +295,7 @@ All rows: 0.75 m aperture, 0.7 dB lumped for phase error, cross-pol, feed loss a
 |---|---|
 | `dishcalc.py` | Library and command-line calculator: gain, HPBW, Ruze loss, surface tolerance, cosⁿ illumination, feed blockage, feed mismatch |
 | `make_report.py` | Regenerates the README tables and the PNGs in `images/` |
+| `data/w1ghz_dualband_2004.csv` | W1GHZ's calculated dual-band horn efficiencies and phase centers, with source notes |
 | `tests/test_dishcalc.py` | pytest checks against known values |
 | `images/` | Generated charts |
 | `.github/workflows/check.yml` | CI: runs the tests and fails if the README tables don't match the code |
@@ -246,6 +306,9 @@ All rows: 0.75 m aperture, 0.7 dB lumped for phase error, cross-pol, feed loss a
 - S. Silver, *Microwave Antenna Theory and Design*, MIT Radiation Laboratory Series, vol. 12, 1949.
 - J. D. Kraus and R. J. Marhefka, *Antennas*, McGraw-Hill.
 - P. Wade, W1GHZ, *The W1GHZ Online Microwave Antenna Book* (parabolic dish, feed and efficiency chapters).
+- P. Wade, W1GHZ, "Improving the Dual-band 10 & 24 GHz Feedhorn for Offset Dishes," 2004.
+- G. Lauterbach, AD6FP, and L. Karlsson, AA6IW, "Dual-Band 10/24 GHz Feedhorns for Shallow Dishes," *Proceedings of Microwave Update 2001*, ARRL, pp. 181–190.
+- Rochester VHF Group, [W1GHZ Dual-Band Dish Feed](https://rvhfg.org/wpr/w1ghz-dual-band-dish-feed/).
 
 ## License
 

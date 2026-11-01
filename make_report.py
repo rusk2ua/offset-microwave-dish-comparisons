@@ -202,6 +202,9 @@ SCENARIOS = [
     ("Prime focus, spun aluminum, f/D 0.31, feed for 0.40", "prime", 0.31, 0.40, 0.25),
     ("Prime focus, spun aluminum, f/D 0.31, deep-dish feed", "prime", 0.31, 0.31, 0.25),
     ("Prime focus, mesh/homebrew, f/D 0.45, matched feed", "prime", 0.45, 0.45, 1.00),
+    # Optional 6th field: per-band feed efficiency (10, 24) from published data instead of the cos^n model.
+    ("Offset TV dish, pressed steel, W1GHZ dual-band feed (Chaparral horn)", "offset", 0.70, 0.70, 0.60,
+     (0.74, 0.76)),
 ]
 
 
@@ -209,16 +212,18 @@ def scenario_rows():
     """[(name, rms, illum, (eff10, gain10), (eff24, gain24), (blk10, blk24)), ...]"""
     other = 10 ** (-OTHER_LOSS_DB / 10)
     rows = []
-    for name, geom, fd, feed_fd, rms in SCENARIOS:
+    for name, geom, fd, feed_fd, rms, *override in SCENARIOS:
         n, _ = dc.best_feed_n(feed_fd)
-        illum = dc.illumination_efficiency(n, fd)
+        model_illum = dc.illumination_efficiency(n, fd)
         cells, blocks = [], []
-        for f in BANDS:
+        for k, f in enumerate(BANDS):
+            illum = override[0][k] if override else model_illum
             blk = 1.0 if geom == "offset" else dc.blockage_efficiency(FEED_BLOCK_WL * dc.wavelength_m(f), SCEN_D)
             blocks.append(blk)
             eff = illum * blk * other * 10 ** (-dc.ruze_loss_db(rms, f) / 10)
             cells.append((eff, dc.gain_dbi(SCEN_D, f, eff)))
-        rows.append((name, rms, illum, cells[0], cells[1], tuple(blocks)))
+        illum_txt = f"{override[0][0]:.0%} / {override[0][1]:.0%}*" if override else f"{model_illum:.1%}"
+        rows.append((name, rms, illum_txt, cells[0], cells[1], tuple(blocks)))
     return rows
 
 
@@ -226,10 +231,12 @@ def scenario_table() -> str:
     t = ("| Dish | RMS (assumed) | Illum. × spill | Blockage 10 / 24 | Net eff. 10 GHz | Net eff. 24 GHz "
          "| Gain 10.368 | Gain 24.192 |\n|---|---|---|---|---|---|---|---|\n")
     for name, rms, illum, c10, c24, blk in scenario_rows():
-        t += (f"| {name} | {rms:.2f} mm | {illum:.1%} | {blk[0]:.1%} / {blk[1]:.1%} | "
+        t += (f"| {name} | {rms:.2f} mm | {illum} | {blk[0]:.1%} / {blk[1]:.1%} | "
               f"{c10[0]:.1%} | {c24[0]:.1%} | {c10[1]:.2f} | {c24[1]:.2f} |\n")
     t += (f"\nAll rows: {SCEN_D} m aperture, {OTHER_LOSS_DB} dB lumped for phase error, cross-pol, feed loss "
-          f"and struts, feed shadow {FEED_BLOCK_WL:.0f}λ across. Gains in dBi.")
+          f"and struts, feed shadow {FEED_BLOCK_WL:.0f}λ across. Gains in dBi. "
+          "\\* W1GHZ's calculated 10 / 24 GHz efficiency at f/D 0.7 (includes phase error), used instead of the "
+          "cos^n model.")
     return t
 
 
@@ -332,6 +339,107 @@ def chart_size_vs_surface():
     plt.close(fig)
 
 
+# ---------------------------------------------------------------- dual-band (W1GHZ feed)
+
+REAL_WORLD = 0.85   # W1GHZ: "REAL WORLD at least 15% lower" than calculated efficiency
+DUAL_HORN = "Chaparral"
+DUAL_DISHES = [("18 in", 18 * dc.INCH)] + DISHES
+DUAL_RMS = [0.25, 0.5, 0.75]
+
+
+def load_horns():
+    import csv
+    with open(ROOT / "data" / "w1ghz_dualband_2004.csv") as fh:
+        rows = [r for r in csv.DictReader(line for line in fh if not line.startswith("#"))]
+    for r in rows:
+        for k in r:
+            if k != "horn":
+                r[k] = float(r[k])
+    return rows
+
+
+def horn_table() -> str:
+    t = ("| Horn | 24 GHz best eff. (f/D) | 10 GHz best eff. (f/D) | Eff. at f/D 0.7: 24 GHz | "
+         "Eff. at f/D 0.7: 10 GHz | 10 vs 24 GHz | Phase-center gap |\n|---|---|---|---|---|---|---|\n")
+    for h in load_horns():
+        gap = abs(h["pc24_mm"] - h["pc10_mm"])
+        diff = 10 * math.log10(h["offset07_eff10"] / h["offset07_eff24"])
+        lam24 = dc.wavelength_m(BANDS[1]) * 1000
+        lam10 = dc.wavelength_m(BANDS[0]) * 1000
+        name = f"**{h['horn']}**" if h["horn"] == DUAL_HORN else h["horn"]
+        t += (f"| {name} | {h['eff24_best']:.0%} ({h['fd24_best']:.2f}) | {h['eff10_best']:.0%} ({h['fd10_best']:.2f}) | "
+              f"{h['offset07_eff24']:.0%} | {h['offset07_eff10']:.0%} | {diff:+.2f} dB | "
+              f"{gap:.1f} mm ({gap / lam10:.2f} λ / {gap / lam24:.2f} λ) |\n")
+    t += ("\nCalculated (HFSS) values from W1GHZ (2004); see `data/w1ghz_dualband_2004.csv`. "
+          "\"10 vs 24 GHz\" is the 10 GHz efficiency relative to 24 GHz at offset f/D 0.7, "
+          "with the feed at the 24 GHz phase center. The phase-center gap is shown in wavelengths at 10 and at 24 GHz.")
+    return t
+
+
+def dual_effs():
+    h = next(x for x in load_horns() if x["horn"] == DUAL_HORN)
+    return h["offset07_eff10"] * REAL_WORLD, h["offset07_eff24"] * REAL_WORLD
+
+
+def dual_gain_table() -> str:
+    e10, e24 = dual_effs()
+    cols = [(f, e, r) for f, e in ((BANDS[0], e10), (BANDS[1], e24)) for r in DUAL_RMS]
+    t = "| Dish | " + " | ".join(f"{'10' if f < 20 else '24'} GHz @ {r} mm" for f, _, r in cols) + " |\n"
+    t += "|---|" + "---|" * len(cols) + "\n"
+    for name, d in DUAL_DISHES:
+        t += f"| {name} ({d:.3f} m) | " + " | ".join(
+            f"{dc.gain_dbi(d, f, e) - dc.ruze_loss_db(r, f):.1f}" for f, e, r in cols) + " |\n"
+    t += (f"\nNet gain in dBi with the {DUAL_HORN} horn: W1GHZ's calculated efficiency at f/D 0.7 "
+          f"× {REAL_WORLD} real-world factor = {e10:.1%} at 10.368 GHz and {e24:.1%} at 24.192 GHz, "
+          "minus Ruze surface loss.")
+    return t
+
+
+def chart_horns():
+    horns = load_horns()
+    names = [h["horn"].replace(" (bare dual-mode)", "\n(bare)").replace(" corrugated", "\ncorrugated") for h in horns]
+    x = np.arange(len(horns))
+    w = 0.36
+    fig, ax = plt.subplots(figsize=(9, 5.2), facecolor=SURFACE)
+    for i, (key, f, color) in enumerate((("offset07_eff10", BANDS[0], BLUE), ("offset07_eff24", BANDS[1], ORANGE))):
+        vals = [h[key] * 100 for h in horns]
+        bars = ax.bar(x + (i - 0.5) * (w + 0.02), vals, w, color=color, label=f"{f} GHz", zorder=2)
+        for b, v in zip(bars, vals):
+            ax.text(b.get_x() + b.get_width() / 2, v + 1, f"{v:.0f}", ha="center", color=INK, fontsize=9)
+    style(ax, "W1GHZ dual-band feed: calculated efficiency at offset f/D 0.7, by horn",
+          "", "Calculated efficiency (%)")
+    ax.set_xticks(x, names, fontsize=9)
+    ax.grid(axis="x", visible=False)
+    ax.set_ylim(0, 95)
+    ax.legend(frameon=False, loc="upper right", labelcolor=INK, ncol=2)
+    fig.tight_layout()
+    fig.savefig(ROOT / "images" / "dualband_horns.png", dpi=150)
+    plt.close(fig)
+
+
+def chart_dual_gain():
+    e10, e24 = dual_effs()
+    d = np.linspace(0.4, 1.0, 241)
+    fig, axes = plt.subplots(1, 2, figsize=(11, 5.0), facecolor=SURFACE)
+    for ax, f, e in zip(axes, BANDS, (e10, e24)):
+        for rms, color in zip(DUAL_RMS, (BLUE, ORANGE, AQUA)):
+            ax.plot(d, [dc.gain_dbi(x, f, e) - dc.ruze_loss_db(rms, f) for x in d], color=color, linewidth=2,
+                    label=f"{rms} mm RMS")
+        for name, dia in DUAL_DISHES:
+            ax.axvline(dia, color=GRID, linewidth=1, zorder=0)
+        style(ax, f"{f} GHz ({e:.0%} before surface loss)", "Aperture diameter (m)", "Net gain (dBi)")
+        ax.title.set_fontsize(12)
+        ax.set_xlim(0.4, 1.0)
+        top = dc.gain_dbi(1.0, f, e) + 0.5
+        ax.set_ylim(top - 11, top)
+    axes[0].legend(frameon=False, loc="lower right", labelcolor=INK, fontsize=9)
+    fig.suptitle(f"Offset dish with the W1GHZ dual-band feed ({DUAL_HORN} horn): net gain",
+                 x=0.01, ha="left", color=INK, fontsize=13, fontweight="bold")
+    fig.tight_layout()
+    fig.savefig(ROOT / "images" / "dualband_gain.png", dpi=150)
+    plt.close(fig)
+
+
 def main():
     chart_loss_vs_rms()
     chart_loss_vs_freq()
@@ -342,6 +450,8 @@ def main():
     chart_feed_mismatch()
     chart_scenarios()
     chart_size_vs_surface()
+    chart_horns()
+    chart_dual_gain()
     chart_net_eff_by_band()
     tables = (
         "### 10 GHz (10.368 GHz, λ = {:.2f} mm) — gain in dBi\n\n{}\n\n"
@@ -364,8 +474,15 @@ def main():
              ruze_table(), tolerance_table(), efficiency_band_table(), feed_table(), scenario_table())
     readme = ROOT / "README.md"
     text = readme.read_text()
-    text = re.sub(r"(<!-- TABLES:START -->\n).*?(<!-- TABLES:END -->)",
-                  lambda m: m.group(1) + tables + "\n" + m.group(2), text, flags=re.S)
+    dualband = (
+        "#### The W1GHZ feed with different horns\n\n{}\n\n"
+        "![Dual-band horn efficiencies](images/dualband_horns.png)\n\n"
+        "#### Expected net gain on offset dishes\n\n{}\n\n"
+        "![Dual-band net gain](images/dualband_gain.png)"
+    ).format(horn_table(), dual_gain_table())
+    for tag, body in (("TABLES", tables), ("DUALBAND", dualband)):
+        text = re.sub(rf"(<!-- {tag}:START -->\n).*?(<!-- {tag}:END -->)",
+                      lambda mm: mm.group(1) + body + "\n" + mm.group(2), text, flags=re.S)
     readme.write_text(text)
     print("README tables and images/ regenerated")
 

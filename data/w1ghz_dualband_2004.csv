@@ -1,0 +1,11 @@
+# Source: Paul Wade W1GHZ, "Improving the Dual-band 10 & 24 GHz Feedhorn for Offset Dishes" (2004),
+# table "Dual band 10&24 GHz Feed - Calculated Horn Performance". Calculated (HFSS) values, not measured;
+# W1GHZ notes real-world efficiency is at least 15% lower. Phase centers in mm from the aperture center,
+# negative = inside the horn. Offset columns: efficiency at offset f/D 0.7 with the feed at the 24 GHz phase center.
+horn,eff24_best,fd24_best,pc24_mm,eff10_best,fd10_best,pc10_mm,offset07_eff24,offset07_eff10
+None (bare dual-mode),0.76,0.72,1.2,0.71,0.38,0.0,0.76,0.47
+Conical,0.76,0.80,-26.0,0.67,0.70,-31.2,0.74,0.66
+RCA DSS,0.75,0.93,-24.8,0.77,0.70,-5.8,0.69,0.68
+Chaparral,0.78,0.81,-23.6,0.75,0.65,-24.9,0.76,0.74
+CD-80,0.77,0.88,-29.1,0.78,0.76,-4.9,0.68,0.65
+Surplus corrugated,0.79,0.80,-6.2,0.76,0.70,-22.0,0.77,0.70
