@@ -205,10 +205,10 @@ SCENARIOS = [
 ]
 
 
-def scenario_table() -> str:
+def scenario_rows():
+    """[(name, rms, illum, (eff10, gain10), (eff24, gain24), (blk10, blk24)), ...]"""
     other = 10 ** (-OTHER_LOSS_DB / 10)
-    t = ("| Dish | RMS (assumed) | Illum. × spill | Blockage 10 / 24 | Net eff. 10 GHz | Net eff. 24 GHz "
-         "| Gain 10.368 | Gain 24.192 |\n|---|---|---|---|---|---|---|---|\n")
+    rows = []
     for name, geom, fd, feed_fd, rms in SCENARIOS:
         n, _ = dc.best_feed_n(feed_fd)
         illum = dc.illumination_efficiency(n, fd)
@@ -218,8 +218,16 @@ def scenario_table() -> str:
             blocks.append(blk)
             eff = illum * blk * other * 10 ** (-dc.ruze_loss_db(rms, f) / 10)
             cells.append((eff, dc.gain_dbi(SCEN_D, f, eff)))
-        t += (f"| {name} | {rms:.2f} mm | {illum:.1%} | {blocks[0]:.1%} / {blocks[1]:.1%} | "
-              f"{cells[0][0]:.1%} | {cells[1][0]:.1%} | {cells[0][1]:.2f} | {cells[1][1]:.2f} |\n")
+        rows.append((name, rms, illum, cells[0], cells[1], tuple(blocks)))
+    return rows
+
+
+def scenario_table() -> str:
+    t = ("| Dish | RMS (assumed) | Illum. × spill | Blockage 10 / 24 | Net eff. 10 GHz | Net eff. 24 GHz "
+         "| Gain 10.368 | Gain 24.192 |\n|---|---|---|---|---|---|---|---|\n")
+    for name, rms, illum, c10, c24, blk in scenario_rows():
+        t += (f"| {name} | {rms:.2f} mm | {illum:.1%} | {blk[0]:.1%} / {blk[1]:.1%} | "
+              f"{c10[0]:.1%} | {c24[0]:.1%} | {c10[1]:.2f} | {c24[1]:.2f} |\n")
     t += (f"\nAll rows: {SCEN_D} m aperture, {OTHER_LOSS_DB} dB lumped for phase error, cross-pol, feed loss "
           f"and struts, feed shadow {FEED_BLOCK_WL:.0f}λ across. Gains in dBi.")
     return t
@@ -235,12 +243,105 @@ def efficiency_band_table() -> str:
     return t.rstrip()
 
 
+def chart_tolerance():
+    budgets = [0.25, 0.5, 1.0, 3.0]
+    x = np.arange(len(budgets))
+    w = 0.36
+    fig, ax = plt.subplots(figsize=(9, 5.2), facecolor=SURFACE)
+    for i, (f, color) in enumerate(((BANDS[0], BLUE), (BANDS[1], ORANGE))):
+        vals = [dc.rms_for_loss_mm(b, f) for b in budgets]
+        bars = ax.bar(x + (i - 0.5) * (w + 0.02), vals, w, color=color, label=f"{f} GHz", zorder=2)
+        for b, v in zip(bars, vals):
+            ax.text(b.get_x() + b.get_width() / 2, v + 0.03, f"{v:.2f}", ha="center", color=INK, fontsize=9)
+    style(ax, "Largest RMS surface error for a given loss budget", "Surface-error loss you'll accept",
+          "RMS surface error allowed (mm)")
+    ax.set_xticks(x, [f"{b:g} dB" for b in budgets])
+    ax.grid(axis="x", visible=False)
+    ax.set_ylim(0, 2.15)
+    ax.legend(frameon=False, loc="upper left", labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(ROOT / "images" / "surface_tolerance.png", dpi=150)
+    plt.close(fig)
+
+
+def chart_feed_mismatch():
+    fd = np.round(np.arange(0.30, 0.801, 0.01), 3)
+    best = {x: dc.best_feed_n(x)[1] for x in fd}
+    fig, ax = plt.subplots(figsize=(9, 5.2), facecolor=SURFACE)
+    for design, color in zip((0.31, 0.40, 0.50, 0.60), (BLUE, ORANGE, AQUA, YELLOW)):
+        n, _ = dc.best_feed_n(design)
+        y = [10 * math.log10(best[x] / dc.illumination_efficiency(n, x)) for x in fd]
+        ax.plot(fd, y, color=color, linewidth=2, label=f"Feed designed for f/D {design:.2f}")
+    ax.axhline(0.5, color=INK2, linewidth=1, linestyle=(0, (4, 3)))
+    ax.text(0.445, 0.40, "0.5 dB", color=INK2, fontsize=9)
+    ax.plot([0.31], [10 * math.log10(best[0.31] / dc.illumination_efficiency(dc.best_feed_n(0.40)[0], 0.31))],
+            "o", color=ORANGE, markersize=8, markeredgecolor=SURFACE, markeredgewidth=2, zorder=4)
+    style(ax, "Prime focus: loss from a feed not matched to the dish (any band)",
+          "Prime-focus dish f/D", "Loss vs. best feed for that dish (dB)")
+    ax.set_xlim(0.30, 0.80)
+    ax.set_ylim(0, 3)
+    ax.legend(frameon=False, loc="upper right", labelcolor=INK, fontsize=9)
+    fig.tight_layout()
+    fig.savefig(ROOT / "images" / "feed_mismatch.png", dpi=150)
+    plt.close(fig)
+
+
+def chart_scenarios():
+    rows = scenario_rows()
+    names = [r[0] for r in rows][::-1]
+    y = np.arange(len(names))
+    h = 0.36
+    fig, ax = plt.subplots(figsize=(9, 5.6), facecolor=SURFACE)
+    for i, (f, color) in enumerate(((BANDS[0], BLUE), (BANDS[1], ORANGE))):
+        effs = [r[3 + i][0] * 100 for r in rows][::-1]
+        gains = [r[3 + i][1] for r in rows][::-1]
+        bars = ax.barh(y + (0.5 - i) * (h + 0.02), effs, h, color=color, label=f"{f} GHz", zorder=2)
+        for b, e, g in zip(bars, effs, gains):
+            ax.text(e + 0.8, b.get_y() + b.get_height() / 2, f"{e:.0f}%  ({g:.1f} dBi)", va="center",
+                    color=INK, fontsize=8.5)
+    style(ax, f"Offset vs. prime focus: net efficiency of a {SCEN_D} m dish", "Net aperture efficiency (%)", "")
+    ax.set_yticks(y, [n.replace(", ", ",\n", 1) for n in names], fontsize=8.5)
+    ax.grid(axis="y", visible=False)
+    ax.set_xlim(0, 92)
+    ax.legend(frameon=False, loc="lower right", labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(ROOT / "images" / "offset_vs_prime_focus.png", dpi=150)
+    plt.close(fig)
+
+
+def chart_size_vs_surface():
+    d = np.linspace(0.5, 1.0, 201)
+    base = 0.60
+    fig, axes = plt.subplots(1, 2, figsize=(11, 5.0), facecolor=SURFACE, sharey=False)
+    for ax, f in zip(axes, BANDS):
+        for rms, color in zip(RMS, (BLUE, ORANGE, AQUA, YELLOW)):
+            loss = dc.ruze_loss_db(rms, f)
+            ax.plot(d, [dc.gain_dbi(x, f, base) - loss for x in d], color=color, linewidth=2,
+                    label=f"{rms} mm RMS")
+        lo = dc.gain_dbi(0.5, f, base) - dc.ruze_loss_db(1.0, f)
+        style(ax, f"{f} GHz", "Aperture diameter (m)", "Net gain (dBi)")
+        ax.set_xlim(0.5, 1.0)
+        top = dc.gain_dbi(1.0, f, base) + 0.5
+        ax.set_ylim(top - 11, top)
+        ax.title.set_fontsize(12)
+    axes[0].legend(frameon=False, loc="lower right", labelcolor=INK, fontsize=9)
+    fig.suptitle(f"Size vs. surface: net gain at {base:.0%} efficiency before surface loss",
+                 x=0.01, ha="left", color=INK, fontsize=13, fontweight="bold")
+    fig.tight_layout()
+    fig.savefig(ROOT / "images" / "size_vs_surface.png", dpi=150)
+    plt.close(fig)
+
+
 def main():
     chart_loss_vs_rms()
     chart_loss_vs_freq()
     chart_illum_vs_fd()
     chart_gain_vs_diameter(10.368, "gain_vs_diameter_10ghz.png", (31.5, 40.0))
     chart_gain_vs_diameter(24.192, "gain_vs_diameter_24ghz.png", (39.0, 47.5))
+    chart_tolerance()
+    chart_feed_mismatch()
+    chart_scenarios()
+    chart_size_vs_surface()
     chart_net_eff_by_band()
     tables = (
         "### 10 GHz (10.368 GHz, λ = {:.2f} mm) — gain in dBi\n\n{}\n\n"
@@ -249,10 +350,15 @@ def main():
         "### 24 GHz (24.192 GHz, λ = {:.2f} mm) — gain in dBi\n\n{}\n\n"
         "![Gain vs diameter at 24.192 GHz](images/gain_vs_diameter_24ghz.png)\n\n"
         "### Surface-error (Ruze) loss\n\n{}\n\n"
+        "![Surface-error loss vs frequency](images/ruze_loss_vs_freq.png)\n\n"
         "### Surface tolerance for a given loss budget\n\n{}\n\n"
+        "![Surface tolerance by band](images/surface_tolerance.png)\n\n"
         "### Illumination efficiency by band (prime focus, best-matched feed)\n\n{}\n\n"
+        "![Illumination efficiency by band](images/efficiency_by_band.png)\n\n"
         "### Feed f/D mismatch example (prime focus: feed for f/D 0.40 on an f/D 0.31 dish)\n\n{}\n\n"
-        "### Offset vs. prime focus: planning comparison\n\n{}"
+        "![Feed mismatch loss vs f/D](images/feed_mismatch.png)\n\nThe dot marks the f/D 0.40 feed on the f/D 0.31 dish from the table.\n\n"
+        "### Offset vs. prime focus: planning comparison\n\n{}\n\n"
+        "![Offset vs prime focus net efficiency](images/offset_vs_prime_focus.png)"
     ).format(dc.wavelength_m(10.368) * 1000, gain_table(10.368),
              dc.wavelength_m(24.192) * 1000, gain_table(24.192),
              ruze_table(), tolerance_table(), efficiency_band_table(), feed_table(), scenario_table())

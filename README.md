@@ -58,8 +58,6 @@ $$L_{dB} = 4.343\left(\frac{4\pi\varepsilon}{\lambda}\right)^2$$
 
 where ε is the RMS surface error. The loss scales with ε² and f². The formula assumes random, well-distributed errors. Large-scale distortion, such as a sagging rim, a warped pressing or the wrong parabola, behaves differently and is often worse.
 
-![Surface-error loss vs frequency](images/ruze_loss_vs_freq.png)
-
 ### Feed blockage (prime focus)
 
 A prime-focus feed sits in front of the aperture and casts a shadow. For a feed shadow of diameter D_b, the blockage efficiency is approximately
@@ -79,9 +77,7 @@ $$\eta_{ill} = \cot^2\frac{\psi_0}{2}\left|\int_0^{\psi_0}\sqrt{2(n+1)\cos^n\psi
 
 ![Prime-focus illumination efficiency vs f/D](images/illumination_vs_fd.png)
 
-Multiplying the illumination efficiency by the Ruze surface factor shows where 10 and 24 GHz separate. This holds for either dish type:
-
-![Illumination efficiency by band](images/efficiency_by_band.png)
+Multiplying the illumination efficiency by the Ruze surface factor shows where 10 and 24 GHz separate, for either dish type. See *Illumination efficiency by band* under Results.
 
 ## Offset vs. prime-focus dishes
 
@@ -104,6 +100,34 @@ Prime-focus dishes are where f/D and feed choice matter.
 - **The feed blocks part of the aperture,** which costs a little gain, less on 24 GHz than on 10 GHz.
 
 The *Offset vs. prime focus* table under Results puts example dishes of both kinds side by side. Its surface-error and lumped-loss values are **assumptions for illustration**. Edit `SCENARIOS`, `OTHER_LOSS_DB` and `FEED_BLOCK_WL` in `make_report.py` to match dishes you've measured.
+
+## Choosing a dish and feed: single-band use
+
+The tables and charts below support one main conclusion: **on 10 GHz, buy aperture; on 24 GHz, buy surface accuracy.** Feed geometry rules are the same on both bands.
+
+![Size vs surface](images/size_vs_surface.png)
+
+### 10 GHz (10.368 GHz)
+
+- **Size matters most.** A 0.5 dB surface budget allows 0.78 mm RMS, which most decent dishes meet. At 60% base efficiency, a 0.88 m dish with a 0.75 mm RMS surface (36.9 dBi) beats a 0.75 m dish with a 0.25 mm surface (36.0 dBi) by about 1 dB. Get the biggest dish you can mount, aim and weatherproof. Beamwidth is still a comfortable 2.3–3.4° in this size range.
+- **Offset TV dishes are an excellent choice.** They have no blockage, their pressed surfaces cost only a few tenths of a dB at 10 GHz, and they're cheap and plentiful. Use the reflector's width as D.
+- **Offset feeds:** use a feed designed for offset TV-dish geometry. Since those dishes all share similar geometry, the feed and dish don't need to be matched one to one.
+- **Prime-focus feeds: match the feed to f/D, especially on deep dishes.** The *feed mismatch* chart shows that a feed for f/D 0.40 stays within 0.5 dB of ideal from about f/D 0.32 to 0.53, and a feed for 0.60 is forgiving from about 0.47 to 0.80. A feed for f/D 0.31 is already 0.5 dB down at f/D 0.40. The deeper the dish, the less room you have.
+- **Blockage barely matters** (about 0.1 dB on a 0.75 m dish), so a well-made prime-focus dish isn't penalized.
+- **Mesh and homebrew reflectors are usable.** Even 1 mm RMS costs about 0.8 dB here.
+
+### 24 GHz (24.192 GHz)
+
+- **Surface accuracy matters most.** A 0.5 dB budget needs 0.33 mm RMS, and 1 dB needs 0.47 mm. At 60% base efficiency, a 0.75 m dish with a 0.25 mm surface (43.1 dBi) beats a 0.88 m dish with 0.75 mm (42.2 dBi), and a 24 in dish with a 0.25 mm surface (41.3 dBi) beats a 0.88 m dish with 1 mm (40.3 dBi). Size only pays off once the surface is good.
+- **Look for precision reflectors:** spun or machined aluminum, carbon fiber, or an offset dish whose surface you've checked. Avoid mesh. The W1GHZ dual-band feed notes say the same.
+- **Check the surface before committing.** Use a template or a measured profile. Better yet, compare sun noise on 10 and 24 GHz: if 24 GHz falls well short of what the 10 GHz result predicts, the surface is the likely culprit.
+- **Offset TV dishes are a gamble.** Some are good enough and some will lose 1–3 dB (see the comparison table). Measure before you build a station around one.
+- **The mechanics get about 2.3× tighter.** Beamwidth is roughly 1.0–1.5°, so mount stiffness, wind loading and pointing resolution matter more. Feed position tolerances scale with wavelength too, so peak the feed in small steps.
+- **The feed rules don't change.** Illumination efficiency depends only on geometry, so the same f/D matching guidance applies. Blockage is negligible (about 0.02 dB), so a precision prime-focus dish with a matched feed is the strongest single-band 24 GHz choice in the comparison table.
+
+### Coming next: dual-band
+
+The [W1GHZ 10/24 GHz dual-band feed](https://rvhfg.org/wpr/w1ghz-dual-band-dish-feed/) is designed for **offset** dishes, and its two phase centers are close together, so peaking it on 10 GHz also puts 24 GHz in good shape. One feed then serves both bands, so the dish has to meet the 24 GHz surface requirement. A dual-band comparison will be added next.
 
 ## Results
 
@@ -145,6 +169,8 @@ At 10.4 GHz add about 0.03 dB.
 | 0.75 mm | 0.46 dB | 2.51 dB |
 | 1.0 mm | 0.82 dB | 4.47 dB |
 
+![Surface-error loss vs frequency](images/ruze_loss_vs_freq.png)
+
 ### Surface tolerance for a given loss budget
 
 | Max loss accepted | RMS allowed @ 10.368 GHz | RMS allowed @ 24.192 GHz |
@@ -153,6 +179,8 @@ At 10.4 GHz add about 0.03 dB.
 | 0.5 dB | 0.78 mm | 0.33 mm |
 | 1 dB | 1.10 mm | 0.47 mm |
 | 3 dB | 1.91 mm | 0.82 mm |
+
+![Surface tolerance by band](images/surface_tolerance.png)
 
 ### Illumination efficiency by band (prime focus, best-matched feed)
 
@@ -164,6 +192,8 @@ At 10.4 GHz add about 0.03 dB.
 | 0.60 | 81.7% | 77.9% | 67.6% | 63.2% | 29.2% |
 | 0.80 | 81.5% | 77.8% | 67.5% | 63.0% | 29.2% |
 
+![Illumination efficiency by band](images/efficiency_by_band.png)
+
 ### Feed f/D mismatch example (prime focus: feed for f/D 0.40 on an f/D 0.31 dish)
 
 | Case | Illumination × spillover efficiency |
@@ -173,6 +203,10 @@ At 10.4 GHz add about 0.03 dB.
 | Feed optimized for f/D 0.31 (cos^0.75) | 85.5% |
 
 The 0.40 feed loses **0.43 dB** on the 0.31 dish compared with its own 0.40 dish, and **0.57 dB** compared with the best feed for f/D 0.31. Rim half-angle is 77.8° at f/D 0.31 vs 64.0° at f/D 0.40.
+
+![Feed mismatch loss vs f/D](images/feed_mismatch.png)
+
+The dot marks the f/D 0.40 feed on the f/D 0.31 dish from the table.
 
 ### Offset vs. prime focus: planning comparison
 
@@ -185,6 +219,8 @@ The 0.40 feed loses **0.43 dB** on the 0.31 dish compared with its own 0.40 dish
 | Prime focus, mesh/homebrew, f/D 0.45, matched feed | 1.00 mm | 82.2% | 97.3% / 99.5% | 56.4% | 24.9% | 35.74 | 39.54 |
 
 All rows: 0.75 m aperture, 0.7 dB lumped for phase error, cross-pol, feed loss and struts, feed shadow 3λ across. Gains in dBi.
+
+![Offset vs prime focus net efficiency](images/offset_vs_prime_focus.png)
 <!-- TABLES:END -->
 
 ## Assumptions and limits
